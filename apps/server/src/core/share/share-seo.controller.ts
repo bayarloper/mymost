@@ -68,8 +68,14 @@ export class ShareSeoController {
           workspace.id,
           { includeContent: false },
         );
-        title = shared.page.title;
-        searchIndexing = shared.share.searchIndexing;
+        // Don't leak the title of password-protected pages to crawlers/link previews.
+        if (shared.share.hasPassword) {
+          title = 'Protected page';
+          searchIndexing = false;
+        } else {
+          title = shared.page.title;
+          searchIndexing = shared.share.searchIndexing;
+        }
       } catch (err) {
         return this.sendIndex(indexFilePath, res);
       }

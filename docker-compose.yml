@@ -1,6 +1,9 @@
 services:
   docmost:
-    image: docmost/docmost:latest
+    # Build this fork (LDAP, API keys, page permissions, audit log, etc.)
+    # instead of pulling the upstream image, which lacks these changes.
+    build: .
+    image: mymost:latest
     depends_on:
       - db
       - redis

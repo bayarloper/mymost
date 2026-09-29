@@ -12,6 +12,7 @@ export interface IShare {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  hasPassword?: boolean;
   sharedPage?: ISharePage;
 }
 

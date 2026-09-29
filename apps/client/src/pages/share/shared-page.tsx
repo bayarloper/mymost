@@ -8,7 +8,11 @@ import { extractPageSlugId } from "@/lib";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import { useAtomValue } from "jotai";
 import { sharedTreeDataAtom } from "@/features/share/atoms/shared-page-atom.ts";
-import { isPageInTree } from "@/features/share/utils.ts";
+import {
+  getPasswordRequiredShareKey,
+  isPageInTree,
+} from "@/features/share/utils.ts";
+import SharePasswordPrompt from "@/features/share/components/share-password-prompt.tsx";
 import { DocumentTitle } from "@/components/ui/document-title.tsx";
 import DocsBreadcrumbs from "@/features/public-space/components/docs/docs-breadcrumbs.tsx";
 import DocsPageNav from "@/features/public-space/components/docs/docs-page-nav.tsx";
@@ -55,6 +59,18 @@ export default function SharedPage() {
   }
 
   if (isError || !data) {
+    const lockedShareKey = getPasswordRequiredShareKey(error);
+    if (lockedShareKey) {
+      return (
+        <>
+          <DocumentTitle title={t("Protected page")} withAppName={false}>
+            <meta name="robots" content="noindex" />
+          </DocumentTitle>
+          <SharePasswordPrompt shareKey={lockedShareKey} />
+        </>
+      );
+    }
+
     if ([401, 403, 404].includes(error?.["status"])) {
       return <Error404 />;
     }

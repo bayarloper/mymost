@@ -35,11 +35,12 @@ const PasswordReset = lazy(() => import("./pages/auth/password-reset"));
 const Billing = lazy(() => import("@/ee/billing/pages/billing.tsx"));
 const CloudLogin = lazy(() => import("@/ee/pages/cloud-login.tsx"));
 const CreateWorkspace = lazy(() => import("@/ee/pages/create-workspace.tsx"));
-const Security = lazy(() => import("@/ee/security/pages/security.tsx"));
+const Security = lazy(() => import("@/pages/settings/security/security.tsx"));
 const License = lazy(() => import("@/ee/licence/pages/license.tsx"));
 const SharedPage = lazy(() => import("@/pages/share/shared-page.tsx"));
 const PdfRenderPage = lazy(() => import("@/ee/pdf-export/pdf-render-page.tsx"));
 const Shares = lazy(() => import("@/pages/settings/shares/shares.tsx"));
+const LdapSettings = lazy(() => import("@/pages/settings/ldap/ldap-settings.tsx"));
 const ShareLayout = lazy(
   () => import("@/features/share/components/share-layout.tsx"),
 );
@@ -65,15 +66,15 @@ const MfaSetupRequiredPage = lazy(() =>
   })),
 );
 const SpaceTrash = lazy(() => import("@/pages/space/space-trash.tsx"));
-const UserApiKeys = lazy(() => import("@/ee/api-key/pages/user-api-keys"));
+const UserApiKeys = lazy(() => import("@/pages/settings/account/api-keys.tsx"));
 const WorkspaceApiKeys = lazy(
-  () => import("@/ee/api-key/pages/workspace-api-keys"),
+  () => import("@/pages/settings/workspace/api-management.tsx"),
 );
 const AiSettings = lazy(() => import("@/ee/ai/pages/ai-settings.tsx"));
 const BasePage = lazy(() => import("@/ee/base/pages/base-page.tsx"));
-const AuditLogs = lazy(() => import("@/ee/audit/pages/audit-logs.tsx"));
+const AuditLogs = lazy(() => import("@/pages/settings/audit/audit-logs.tsx"));
 const VerifiedPages = lazy(
-  () => import("@/ee/page-verification/pages/verified-pages.tsx"),
+  () => import("@/pages/settings/verified-pages/verified-pages.tsx"),
 );
 const TemplateList = lazy(() => import("@/ee/template/pages/template-list"));
 const TemplateEditor = lazy(
@@ -171,7 +172,7 @@ export default function App() {
             <Route path={"account/api-keys"} element={<UserApiKeys />} />
             <Route
               path={"account/api-keys/authorized-apps"}
-              element={<UserApiKeys />}
+              element={<Navigate to="/settings/account/api-keys" replace />}
             />
             <Route path={"workspace"} element={<WorkspaceSettings />} />
             <Route path={"members"} element={<WorkspaceMembers />} />
@@ -181,13 +182,17 @@ export default function App() {
             <Route path={"spaces"} element={<Spaces />} />
             <Route path={"sharing"} element={<Shares />} />
             <Route path={"security"} element={<Security />} />
+            {!isCloud() && <Route path={"ldap"} element={<LdapSettings />} />}
             <Route path={"ai"} element={<AiSettings />} />
             <Route path={"ai/mcp"} element={<AiSettings />} />
             <Route path={"audit"} element={<AuditLogs />} />
-            <Route path={"audit/siem"} element={<AuditLogs />} />
+            <Route
+              path={"audit/siem"}
+              element={<Navigate to="/settings/audit" replace />}
+            />
             <Route
               path={"siem"}
-              element={<Navigate to="/settings/audit/siem" replace />}
+              element={<Navigate to="/settings/audit" replace />}
             />
             <Route path={"verifications"} element={<VerifiedPages />} />
             {!isCloud() && <Route path={"license"} element={<License />} />}

@@ -20,6 +20,9 @@ export class AuditActorInterceptor implements NestInterceptor {
       const auditContext = this.cls.get<AuditContext>(AUDIT_CONTEXT_KEY);
       if (auditContext) {
         auditContext.actorId = user.id;
+        if (request.user?.authType === 'api_key') {
+          auditContext.actorType = 'api_key';
+        }
         this.cls.set(AUDIT_CONTEXT_KEY, auditContext);
       }
     }

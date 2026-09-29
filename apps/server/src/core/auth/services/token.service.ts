@@ -15,6 +15,7 @@ import {
   JwtPayload,
   JwtPdfExportDownloadPayload,
   JwtPdfRenderPayload,
+  JwtShareAccessPayload,
   JwtType,
 } from '../dto/jwt-payload';
 import { User } from '@docmost/db/types/entity.types';
@@ -115,6 +116,21 @@ export class TokenService {
     };
 
     return this.jwtService.sign(payload, expiresIn ? { expiresIn } : {});
+  }
+
+  async generateShareAccessToken(opts: {
+    shareId: string;
+    workspaceId: string;
+    passwordVersion: string;
+    expiresIn: StringValue;
+  }): Promise<string> {
+    const payload: JwtShareAccessPayload = {
+      shareId: opts.shareId,
+      workspaceId: opts.workspaceId,
+      pv: opts.passwordVersion,
+      type: JwtType.SHARE_ACCESS,
+    };
+    return this.jwtService.sign(payload, { expiresIn: opts.expiresIn });
   }
 
   async generatePdfRenderToken(

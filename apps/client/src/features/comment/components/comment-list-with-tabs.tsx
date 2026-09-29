@@ -47,6 +47,8 @@ function CommentListWithTabs() {
   const canComment =
     (page?.permissions?.canEdit ?? false) ||
     (space?.settings?.comments?.allowViewerComments === true);
+  // Resolving a thread changes page state, so it needs edit access (server enforces this too).
+  const canResolve = page?.permissions?.canEdit ?? false;
 
   // Separate active and resolved comments
   const { activeComments, resolvedComments } = useMemo(() => {
@@ -132,6 +134,7 @@ function CommentListWithTabs() {
             comment={comment}
             pageId={page?.id}
             canComment={canComment}
+            canResolve={canResolve}
             userSpaceRole={space?.membership?.role}
           />
           <MemoizedChildComments
@@ -155,7 +158,14 @@ function CommentListWithTabs() {
         )}
       </Paper>
     ),
-    [comments, handleAddReply, isLoading, space?.membership?.role, canComment],
+    [
+      comments,
+      handleAddReply,
+      isLoading,
+      space?.membership?.role,
+      canComment,
+      canResolve,
+    ],
   );
 
   if (isCommentsLoading) {

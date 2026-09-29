@@ -19,6 +19,9 @@ export class MigrationService {
         path,
         migrationFolder: path.join(__dirname, '..', 'migrations'),
       }),
+      // This fork adds its own migrations; upstream migrations merged later may
+      // sort before already-applied fork migrations.
+      allowUnorderedMigrations: true,
     });
 
     const { error, results } = await migrator.migrateToLatest();

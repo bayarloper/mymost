@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Logger,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { SearchService } from './search.service';
@@ -31,6 +32,10 @@ import { EnvironmentService } from '../../integrations/environment/environment.s
 import { ModuleRef } from '@nestjs/core';
 import { PublicSpaceService } from '../public-space/public-space.service';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
+import { ShareRepo } from '@docmost/db/repos/share/share.repo';
+import { ShareAccessService } from '../share/share-access.service';
+import { ShareService } from '../share/share.service';
+import { FastifyRequest } from 'fastify';
 
 @UseGuards(JwtAuthGuard)
 @Controller('search')
@@ -44,6 +49,9 @@ export class SearchController {
     private readonly publicSpaceService: PublicSpaceService,
     private readonly pageRepo: PageRepo,
     private moduleRef: ModuleRef,
+    private readonly shareRepo: ShareRepo,
+    private readonly shareAccessService: ShareAccessService,
+    private readonly shareService: ShareService,
   ) {}
 
   @HttpCode(HttpStatus.OK)
@@ -97,20 +105,63 @@ export class SearchController {
   async searchShare(
     @Body() searchDto: SearchShareDTO,
     @AuthWorkspace() workspace: Workspace,
+    @Req() req: FastifyRequest,
   ) {
     delete searchDto.spaceId;
     if (!searchDto.shareId) {
       throw new BadRequestException('shareId is required');
     }
 
+    // Resolve the searchable pages here so the share-level gates (sharing
+    // disabled, share password, protected sub-shares) apply before searching.
+    const share = await this.shareRepo.findById(searchDto.shareId);
+    if (!share || share.workspaceId !== workspace.id) {
+      return { items: [] };
+    }
+    const sharingAllowed = await this.shareService.isSharingAllowed(
+      workspace.id,
+      share.spaceId,
+    );
+    if (
+      !sharingAllowed ||
+      !(await this.shareAccessService.isUnlocked(req, share))
+    ) {
+      return { items: [] };
+    }
+
+    let pageTree: Array<{ id: string; parentPageId?: string | null }>;
+    try {
+      // Excludes page-restricted pages; throws if the shared page itself is restricted.
+      ({ pageTree } = await this.shareService.getShareTree(
+        share.id,
+        workspace.id,
+      ));
+    } catch {
+      return { items: [] };
+    }
+
+    const publicPageIds = share.includeSubPages
+      ? (
+          await this.shareAccessService.filterLockedSubtrees(
+            req,
+            share,
+            pageTree,
+          )
+        ).map((page) => page.id)
+      : [share.pageId];
+
+    delete searchDto.shareId;
+
     if (this.environmentService.getSearchDriver() === 'typesense') {
       return this.searchTypesense(searchDto, {
         workspaceId: workspace.id,
+        publicPageIds,
       });
     }
 
     return this.searchService.searchPage(searchDto, {
       workspaceId: workspace.id,
+      publicPageIds,
     });
   }
 

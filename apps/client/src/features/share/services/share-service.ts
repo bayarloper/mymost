@@ -51,6 +51,24 @@ export async function deleteShare(shareId: string): Promise<void> {
   await api.post("/shares/delete", { shareId });
 }
 
+export async function setSharePassword(data: {
+  shareId: string;
+  password: string;
+}): Promise<void> {
+  await api.post("/shares/set-password", data);
+}
+
+export async function removeSharePassword(shareId: string): Promise<void> {
+  await api.post("/shares/remove-password", { shareId });
+}
+
+export async function unlockShare(data: {
+  shareId: string;
+  password: string;
+}): Promise<void> {
+  await api.post("/shares/unlock", data);
+}
+
 export async function getSharedPageTree(
   shareId: string,
 ): Promise<ISharedPageTree> {

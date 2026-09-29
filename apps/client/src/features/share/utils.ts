@@ -104,3 +104,14 @@ export function isPageInTree(
   }
   return false;
 }
+
+export const SHARE_PASSWORD_REQUIRED = "SHARE_PASSWORD_REQUIRED";
+
+/** Returns the share key to unlock when the API reports a password-protected share. */
+export function getPasswordRequiredShareKey(error: unknown): string | null {
+  const data = (error as any)?.response?.data;
+  if (data?.error === SHARE_PASSWORD_REQUIRED) {
+    return data.shareId ?? null;
+  }
+  return null;
+}

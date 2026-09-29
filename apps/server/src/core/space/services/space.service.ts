@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -13,7 +12,6 @@ import { Space, User } from '@docmost/db/types/entity.types';
 import { UpdateSpaceDto } from '../dto/update-space.dto';
 import { executeTx } from '@docmost/db/utils';
 import { InjectKysely } from 'nestjs-kysely';
-import { Feature } from '../../../common/features';
 import { SpaceMemberService } from './space-member.service';
 import { SpaceRole } from '../../../common/helpers/types/permission';
 import { QueueJob, QueueName } from 'src/integrations/queue/constants';
@@ -139,36 +137,9 @@ export class SpaceService {
       }
     }
 
-    if (
-      typeof updateSpaceDto.disablePublicSharing !== 'undefined' ||
-      typeof updateSpaceDto.allowViewerComments !== 'undefined'
-    ) {
-      const workspace = await this.workspaceRepo.findById(workspaceId, {
-        withLicenseKey: true,
-      });
-
-      if (
-        typeof updateSpaceDto.disablePublicSharing !== 'undefined' &&
-        !this.licenseCheckService.hasFeature(
-          workspace.licenseKey,
-          Feature.SECURITY_SETTINGS,
-          workspace.plan,
-        )
-      ) {
-        throw new ForbiddenException('This feature requires a valid license');
-      }
-
-      if (
-        typeof updateSpaceDto.allowViewerComments !== 'undefined' &&
-        !this.licenseCheckService.hasFeature(
-          workspace.licenseKey,
-          Feature.VIEWER_COMMENTS,
-          workspace.plan,
-        )
-      ) {
-        throw new ForbiddenException('This feature requires a valid license');
-      }
-    }
+    // disablePublicSharing and allowViewerComments are enforced by core code
+    // and managed from the core space settings toggles, so they are not
+    // license-gated.
 
     const spaceBefore = await this.spaceRepo.findById(
       updateSpaceDto.spaceId,

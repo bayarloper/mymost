@@ -24,6 +24,11 @@ import { NotificationModule } from './notification/notification.module';
 import { WatcherModule } from './watcher/watcher.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { SessionModule } from './session/session.module';
+import { LdapAuthModule } from './ldap-auth/ldap-auth.module';
+import { ApiKeyModule } from './api-key/api-key.module';
+import { PagePermissionModule } from './page/page-permission/page-permission.module';
+import { AuditLogModule } from './audit/audit-log.module';
+import { PageVerificationModule } from './page-verification/page-verification.module';
 import { ClsMiddleware } from 'nestjs-cls';
 
 @Module({
@@ -46,6 +51,11 @@ import { ClsMiddleware } from 'nestjs-cls';
     NotificationModule,
     WatcherModule,
     SessionModule,
+    LdapAuthModule,
+    ApiKeyModule,
+    PagePermissionModule,
+    AuditLogModule,
+    PageVerificationModule,
   ],
 })
 export class CoreModule implements NestModule {

@@ -15,6 +15,7 @@ import {
   IconSparkles,
   IconHistory,
   IconShieldCheck,
+  IconServer,
 } from "@tabler/icons-react";
 import { Link, useLocation } from "react-router-dom";
 import classes from "./settings.module.css";
@@ -31,13 +32,9 @@ import {
   prefetchBilling,
   prefetchGroups,
   prefetchLicense,
-  prefetchScimTokens,
   prefetchShares,
   prefetchSpaces,
-  prefetchSsoProviders,
   prefetchWorkspaceMembers,
-  prefetchAuditLogs,
-  prefetchVerifiedPages,
 } from "@/components/settings/settings-queries.tsx";
 import AppVersion from "@/components/settings/app-version.tsx";
 import { mobileSidebarAtom } from "@/components/layouts/global/hooks/atoms/sidebar-atom.ts";
@@ -72,7 +69,6 @@ const groupedData: DataGroup[] = [
         label: "API keys",
         icon: IconKey,
         path: "/settings/account/api-keys",
-        feature: Feature.API_KEYS,
       },
     ],
   },
@@ -89,11 +85,17 @@ const groupedData: DataGroup[] = [
         env: "cloud",
       },
       {
-        label: "Security & SSO",
+        label: "Security",
         icon: IconLock,
         path: "/settings/security",
-        feature: Feature.SECURITY_SETTINGS,
         role: "admin",
+      },
+      {
+        label: "LDAP / Active Directory",
+        icon: IconServer,
+        path: "/settings/ldap",
+        role: "admin",
+        env: "selfhosted",
       },
       { label: "Groups", icon: IconUsersGroup, path: "/settings/groups" },
       { label: "Spaces", icon: IconSpaces, path: "/settings/spaces" },
@@ -102,13 +104,11 @@ const groupedData: DataGroup[] = [
         label: "Verified pages",
         icon: IconShieldCheck,
         path: "/settings/verifications",
-        feature: Feature.PAGE_VERIFICATION,
       },
       {
         label: "API management",
         icon: IconKey,
         path: "/settings/api-keys",
-        feature: Feature.API_KEYS,
         role: "admin",
       },
       {
@@ -118,10 +118,9 @@ const groupedData: DataGroup[] = [
         role: "admin",
       },
       {
-        label: "Audit logs & SIEM",
+        label: "Audit logs",
         icon: IconHistory,
         path: "/settings/audit",
-        feature: Feature.AUDIT_LOGS,
         role: "owner",
         env: "selfhosted",
       },
@@ -204,12 +203,6 @@ export default function SettingsSidebar() {
                 prefetchHandler = prefetchLicense;
               }
               break;
-            case "Security & SSO":
-              prefetchHandler = () => {
-                prefetchSsoProviders();
-                prefetchScimTokens();
-              };
-              break;
             case "Public sharing":
               prefetchHandler = prefetchShares;
               break;
@@ -218,12 +211,6 @@ export default function SettingsSidebar() {
               break;
             case "API management":
               prefetchHandler = prefetchApiKeyManagement;
-              break;
-            case "Audit logs & SIEM":
-              prefetchHandler = prefetchAuditLogs;
-              break;
-            case "Verified pages":
-              prefetchHandler = prefetchVerifiedPages;
               break;
             default:
               break;

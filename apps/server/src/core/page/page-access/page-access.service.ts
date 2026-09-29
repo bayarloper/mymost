@@ -76,6 +76,7 @@ export class PageAccessService {
   async validateCanEdit(
     page: Page,
     user: User,
+    opts?: { fresh?: boolean },
   ): Promise<{ hasRestriction: boolean }> {
     const ability = await this.spaceAbility.createForUser(user, page.spaceId);
 
@@ -85,7 +86,7 @@ export class PageAccessService {
     }
 
     const { hasAnyRestriction, canEdit } =
-      await this.pagePermissionRepo.canUserEditPage(user.id, page.id);
+      await this.pagePermissionRepo.canUserEditPage(user.id, page.id, opts);
 
     if (hasAnyRestriction) {
       // Page has restrictions - use page-level permission

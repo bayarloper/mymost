@@ -18,7 +18,7 @@ import classes from "@/features/auth/components/auth.module.css";
 import { useGetInvitationQuery } from "@/features/workspace/queries/workspace-query.ts";
 import { useRedirectIfAuthenticated } from "@/features/auth/hooks/use-redirect-if-authenticated.ts";
 import { useTranslation } from "react-i18next";
-import SsoLogin from "@/ee/components/sso-login.tsx";
+import LdapLogin from "@/features/ldap-auth/components/ldap-login.tsx";
 import { AuthLayout } from "./auth-layout.tsx";
 
 const formSchema = z.object({
@@ -74,7 +74,7 @@ export function InviteSignUpForm() {
           {t("Join the workspace")}
         </Title>
 
-        <SsoLogin />
+        <LdapLogin showDivider={!invitation.enforceSso} />
 
         {!invitation.enforceSso && (
           <Stack align="stretch" justify="center" gap="xl">

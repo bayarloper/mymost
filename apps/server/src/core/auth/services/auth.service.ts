@@ -27,6 +27,7 @@ import ChangePasswordEmail from '@docmost/transactional/emails/change-password-e
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import ForgotPasswordEmail from '@docmost/transactional/emails/forgot-password-email';
 import { UserTokenRepo } from '@docmost/db/repos/user-token/user-token.repo';
+import { AuthAccountRepo } from '@docmost/db/repos/auth-provider/auth-account.repo';
 import { PasswordResetDto } from '../dto/password-reset.dto';
 import { User, UserToken, Workspace } from '@docmost/db/types/entity.types';
 import { UserTokenType } from '../auth.constants';
@@ -55,6 +56,7 @@ export class AuthService {
     private userSessionRepo: UserSessionRepo,
     private userRepo: UserRepo,
     private userTokenRepo: UserTokenRepo,
+    private authAccountRepo: AuthAccountRepo,
     private mailService: MailService,
     private domainService: DomainService,
     private environmentService: EnvironmentService,
@@ -183,6 +185,19 @@ export class AuthService {
     );
 
     if (!user || isUserDisabled(user)) {
+      return;
+    }
+
+    // Directory (LDAP) provisioned users must authenticate against the
+    // directory, so they must not be able to set a local password.
+    if (
+      user.hasGeneratedPassword &&
+      (await this.authAccountRepo.hasEnabledProviderAccount(
+        user.id,
+        workspace.id,
+        'ldap',
+      ))
+    ) {
       return;
     }
 

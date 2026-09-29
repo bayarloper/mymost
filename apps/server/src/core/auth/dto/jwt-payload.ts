@@ -8,6 +8,7 @@ export enum JwtType {
   PDF_RENDER = 'pdf_render',
   PDF_EXPORT_DOWNLOAD = 'pdf_export_download',
   OAUTH_ACCESS = 'oauth_access',
+  SHARE_ACCESS = 'share_access',
 }
 export type JwtPayload = {
   sub: string;
@@ -47,6 +48,14 @@ export type JwtApiKeyPayload = {
   workspaceId: string;
   apiKeyId: string;
   type: 'api_key';
+};
+
+export type JwtShareAccessPayload = {
+  shareId: string;
+  workspaceId: string;
+  // Fingerprint of the share's password hash; changing the password invalidates old tokens.
+  pv: string;
+  type: 'share_access';
 };
 
 export type JwtPdfRenderPayload = {

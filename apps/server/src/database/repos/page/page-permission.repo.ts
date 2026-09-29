@@ -383,20 +383,59 @@ export class PagePermissionRepo {
   async canUserEditPage(
     userId: string,
     pageId: string,
+    opts?: { fresh?: boolean },
   ): Promise<{
     hasAnyRestriction: boolean;
     canAccess: boolean;
     canEdit: boolean;
   }> {
+    // Security-sensitive callers (e.g. managing page access) must not act on a
+    // stale cached decision; they recompute and refresh the cache entry.
+    if (opts?.fresh) {
+      const value = await this.computeCanUserEditPage(userId, pageId);
+      try {
+        await this.cacheManager.set(
+          CacheKey.PAGE_CAN_EDIT(userId, pageId),
+          { v: value },
+          PERMISSION_CACHE_TTL_MS,
+        );
+      } catch {
+        // cache refresh is best effort
+      }
+      return value;
+    }
+
     return withCache(
       this.cacheManager,
       CacheKey.PAGE_CAN_EDIT(userId, pageId),
       PERMISSION_CACHE_TTL_MS,
-      async () => {
-        const result = await sql<{
-          canAccess: boolean | null;
-          canEdit: boolean | null;
-        }>`
+      () => this.computeCanUserEditPage(userId, pageId),
+    );
+  }
+
+  /** Drops cached edit/access decisions for the given users on a page. */
+  async invalidateCanEditCache(userIds: string[], pageId: string) {
+    await Promise.all(
+      userIds.map((userId) =>
+        this.cacheManager
+          .del(CacheKey.PAGE_CAN_EDIT(userId, pageId))
+          .catch(() => undefined),
+      ),
+    );
+  }
+
+  private async computeCanUserEditPage(
+    userId: string,
+    pageId: string,
+  ): Promise<{
+    hasAnyRestriction: boolean;
+    canAccess: boolean;
+    canEdit: boolean;
+  }> {
+    const result = await sql<{
+      canAccess: boolean | null;
+      canEdit: boolean | null;
+    }>`
           WITH RECURSIVE ancestors AS (
             SELECT id AS ancestor_id, parent_page_id, 0 AS depth
             FROM pages
@@ -421,17 +460,15 @@ export class PagePermissionRepo {
             )
         `.execute(this.db);
 
-        const row = result.rows[0];
-        if (!row || row.canAccess === null) {
-          return { hasAnyRestriction: false, canAccess: true, canEdit: true };
-        }
-        return {
-          hasAnyRestriction: true,
-          canAccess: row.canAccess,
-          canEdit: row.canAccess && (row.canEdit ?? false),
-        };
-      },
-    );
+    const row = result.rows[0];
+    if (!row || row.canAccess === null) {
+      return { hasAnyRestriction: false, canAccess: true, canEdit: true };
+    }
+    return {
+      hasAnyRestriction: true,
+      canAccess: row.canAccess,
+      canEdit: row.canAccess && (row.canEdit ?? false),
+    };
   }
 
   /**

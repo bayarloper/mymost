@@ -25,6 +25,8 @@ import {
   getShareInfo,
   getSharePageInfo,
   getShares,
+  removeSharePassword,
+  setSharePassword,
   updateShare,
 } from "@/features/share/services/share-service.ts";
 import { IPagination, QueryParams } from "@/lib/types.ts";
@@ -176,5 +178,53 @@ export function useGetSharedPageTreeQuery(
     enabled: !!shareId,
     placeholderData: keepPreviousData,
     staleTime: 60 * 60 * 1000,
+  });
+}
+
+export function useSetSharePasswordMutation() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { shareId: string; password: string }>({
+    mutationFn: (data) => setSharePassword(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (item) =>
+          ["share-for-page", "share-list"].includes(item.queryKey[0] as string),
+      });
+      notifications.show({ message: t("Share password saved") });
+    },
+    onError: (error) => {
+      const message = error?.["response"]?.data?.message;
+      notifications.show({
+        message: Array.isArray(message)
+          ? message.join(", ")
+          : message || t("Failed to set password"),
+        color: "red",
+      });
+    },
+  });
+}
+
+export function useRemoveSharePasswordMutation() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: (shareId) => removeSharePassword(shareId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (item) =>
+          ["share-for-page", "share-list"].includes(item.queryKey[0] as string),
+      });
+      notifications.show({ message: t("Share password removed") });
+    },
+    onError: (error) => {
+      notifications.show({
+        message:
+          error?.["response"]?.data?.message || t("Failed to remove password"),
+        color: "red",
+      });
+    },
   });
 }

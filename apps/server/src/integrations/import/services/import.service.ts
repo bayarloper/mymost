@@ -31,6 +31,7 @@ import { QueueJob, QueueName } from '../../queue/constants';
 import { ModuleRef } from '@nestjs/core';
 import { load } from 'cheerio';
 import { normalizeImportHtml } from '../utils/import-formatter';
+import { DocxImportService } from './docx-import.service';
 
 @Injectable()
 export class ImportService {
@@ -43,6 +44,7 @@ export class ImportService {
     @InjectQueue(QueueName.FILE_TASK_QUEUE)
     private readonly fileTaskQueue: Queue,
     private moduleRef: ModuleRef,
+    private readonly docxImportService: DocxImportService,
   ) {}
 
   async importPage(
@@ -166,25 +168,7 @@ export class ImportService {
     pageId: string,
     userId: string,
   ): Promise<any> {
-    let DocxImportModule: any;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      DocxImportModule = require('./../../../ee/document-import/docx-import.service');
-    } catch (err) {
-      this.logger.error(
-        'DOCX import requested but EE module not bundled in this build',
-      );
-      throw new BadRequestException(
-        'This feature requires a valid enterprise license.',
-      );
-    }
-
-    const docxImportService = this.moduleRef.get(
-      DocxImportModule.DocxImportService,
-      { strict: false },
-    );
-
-    const html = await docxImportService.convertDocxToHtml(
+    const html = await this.docxImportService.convertDocxToHtml(
       fileBuffer,
       workspaceId,
       spaceId,

@@ -1,6 +1,22 @@
 import { BadRequestException } from '@nestjs/common';
 import { Workspace } from '@docmost/db/types/entity.types';
 import { createHmac } from 'node:crypto';
+import { FastifyReply } from 'fastify';
+import { EnvironmentService } from '../../integrations/environment/environment.service';
+
+export function setAuthCookie(
+  res: FastifyReply,
+  token: string,
+  environmentService: EnvironmentService,
+) {
+  res.setCookie('authToken', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    expires: environmentService.getCookieExpiresIn(),
+    secure: environmentService.isHttps(),
+  });
+}
 
 export function computeEmailSignature(
   email: string,

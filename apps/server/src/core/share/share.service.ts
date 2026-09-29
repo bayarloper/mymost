@@ -26,6 +26,8 @@ import { validate as isValidUUID } from 'uuid';
 import { sql } from 'kysely';
 import { TransclusionService } from '../page/transclusion/transclusion.service';
 import { TransclusionLookup } from '../page/transclusion/transclusion.types';
+import { FastifyRequest } from 'fastify';
+import { ShareAccessService } from './share-access.service';
 
 @Injectable()
 export class ShareService {
@@ -38,6 +40,7 @@ export class ShareService {
     @InjectKysely() private readonly db: KyselyDB,
     private readonly tokenService: TokenService,
     private readonly transclusionService: TransclusionService,
+    private readonly shareAccessService: ShareAccessService,
   ) {}
 
   async getShareTree(shareId: string, workspaceId: string) {
@@ -113,7 +116,13 @@ export class ShareService {
   async getSharedPage(
     dto: ShareInfoDto,
     workspaceId: string,
-    opts?: { includeContent?: boolean },
+    opts?: {
+      includeContent?: boolean;
+      // Runs before any page content is loaded, e.g. the share password check.
+      assertAccess?: (
+        share: NonNullable<Awaited<ReturnType<ShareService['getShareForPage']>>>,
+      ) => Promise<void>;
+    },
   ) {
     //TODO: we should resolve the page from the share id
     if (!dto.pageId) throw new NotFoundException('Shared page not found');
@@ -122,6 +131,10 @@ export class ShareService {
 
     if (!share) {
       throw new NotFoundException('Shared page not found');
+    }
+
+    if (opts?.assertAccess) {
+      await opts.assertAccess(share);
     }
 
     const includeContent = opts?.includeContent !== false;
@@ -173,6 +186,7 @@ export class ShareService {
             'shares.spaceId',
             'shares.workspaceId',
             'shares.createdAt',
+            'shares.passwordHash',
           ])
           .where(isValidUUID(pageId) ? 'pages.id' : 'pages.slugId', '=', pageId)
           .where('pages.deletedAt', 'is', null)
@@ -197,6 +211,7 @@ export class ShareService {
                   's.spaceId',
                   's.workspaceId',
                   's.createdAt',
+                  's.passwordHash',
                 ])
                 .where('p.deletedAt', 'is', null)
                 .where(sql`ph.share_id`, 'is', null) // stop if share found
@@ -227,6 +242,7 @@ export class ShareService {
       spaceId: share.spaceId,
       workspaceId: share.workspaceId,
       createdAt: share.createdAt,
+      hasPassword: !!share.passwordHash,
       level: share.level,
       sharedPage: {
         id: share.id,
@@ -312,6 +328,7 @@ export class ShareService {
     shareId: string,
     references: Array<{ sourcePageId: string; transclusionId: string }>,
     workspaceId: string,
+    req: FastifyRequest,
   ): Promise<{ items: TransclusionLookup[] }> {
     const share = await this.shareRepo.findById(shareId);
     if (!share || share.workspaceId !== workspaceId) {
@@ -324,6 +341,7 @@ export class ShareService {
     if (!sharingAllowed) {
       throw new NotFoundException('Share not found');
     }
+    await this.shareAccessService.assertUnlocked(req, share);
 
     const candidatePageIds = Array.from(
       new Set(references.map((r) => r.sourcePageId)),
@@ -358,6 +376,15 @@ export class ShareService {
         const sourceShare = await this.getShareForPage(pageId, workspaceId);
         if (!sourceShare) return null;
         if (!(await isSharingAllowedFor(sourceShare.spaceId))) return null;
+        // Content from another password-protected share stays hidden until
+        // the viewer has unlocked that share too.
+        if (
+          sourceShare.id !== share.id &&
+          sourceShare.hasPassword &&
+          !(await this.shareAccessService.isUnlocked(req, sourceShare))
+        ) {
+          return null;
+        }
         const restricted =
           await this.pagePermissionRepo.hasRestrictedAncestor(pageId);
         if (restricted) return null;

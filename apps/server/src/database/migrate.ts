@@ -24,6 +24,9 @@ const migrator = new Migrator({
     path,
     migrationFolder,
   }),
+  // This fork adds its own migrations; upstream migrations merged later may
+  // sort before already-applied fork migrations.
+  allowUnorderedMigrations: true,
 });
 
 run(db, migrator, migrationFolder);

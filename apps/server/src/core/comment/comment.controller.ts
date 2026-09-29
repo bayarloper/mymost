@@ -12,7 +12,11 @@ import {
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { PageIdDto, CommentIdDto } from './dto/comments.input';
+import {
+  PageIdDto,
+  CommentIdDto,
+  ResolveCommentDto,
+} from './dto/comments.input';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -146,6 +150,51 @@ export class CommentController {
     await this.pageAccessService.validateCanComment(page, user, workspace.id);
 
     return this.commentService.update(comment, dto, user);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('resolve')
+  @OAuthScope('write')
+  async resolve(
+    @Body() dto: ResolveCommentDto,
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const comment = await this.commentRepo.findById(dto.commentId);
+    if (!comment || comment.pageId !== dto.pageId) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.parentCommentId) {
+      throw new ForbiddenException('Only parent comments can be resolved');
+    }
+
+    const page = await this.pageRepo.findById(comment.pageId);
+    if (!page || page.workspaceId !== workspace.id || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    const resolved = await this.commentService.resolve(
+      comment,
+      dto.resolved,
+      user,
+    );
+
+    this.auditService.log({
+      event: dto.resolved
+        ? AuditEvent.COMMENT_RESOLVED
+        : AuditEvent.COMMENT_REOPENED,
+      resourceType: AuditResource.COMMENT,
+      resourceId: comment.id,
+      spaceId: page.spaceId,
+      metadata: {
+        pageId: page.id,
+      },
+    });
+
+    return resolved;
   }
 
   @HttpCode(HttpStatus.OK)

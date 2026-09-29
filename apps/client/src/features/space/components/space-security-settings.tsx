@@ -2,8 +2,8 @@ import { Text, Divider, Title } from "@mantine/core";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { ISpace } from "@/features/space/types/space.types.ts";
-import SpacePublicSharingToggle from "@/ee/security/components/space-public-sharing-toggle.tsx";
-import SpaceViewerCommentsToggle from "@/ee/security/components/space-viewer-comments-toggle.tsx";
+import { SpacePublicSharingToggle } from "@/features/share/components/public-sharing-toggle.tsx";
+import SpaceViewerCommentsToggle from "@/features/space/components/space-viewer-comments-toggle.tsx";
 
 type SpaceSecuritySettingsProps = {
   space: ISpace;

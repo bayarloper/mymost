@@ -17,7 +17,7 @@ import { useRedirectIfAuthenticated } from "@/features/auth/hooks/use-redirect-i
 import { Link } from "react-router-dom";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { useTranslation } from "react-i18next";
-import SsoLogin from "@/ee/components/sso-login.tsx";
+import LdapLogin from "@/features/ldap-auth/components/ldap-login.tsx";
 import { useWorkspacePublicDataQuery } from "@/features/workspace/queries/workspace-query.ts";
 import { Error404 } from "@/components/ui/error-404.tsx";
 import React from "react";
@@ -77,7 +77,7 @@ export function LoginForm() {
             {t("Login")}
           </Title>
 
-          <SsoLogin />
+          <LdapLogin showDivider={!data?.enforceSso} />
 
           {!data?.enforceSso && (
             <>

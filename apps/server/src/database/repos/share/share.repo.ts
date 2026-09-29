@@ -36,6 +36,11 @@ export class ShareRepo {
     'deletedAt',
   ];
 
+  // Never select password_hash itself; expose only whether a password is set.
+  private hasPasswordField = sql<boolean>`shares.password_hash is not null`.as(
+    'hasPassword',
+  );
+
   async findById(
     shareId: string,
     opts?: {
@@ -47,7 +52,8 @@ export class ShareRepo {
   ): Promise<Share> {
     const db = dbOrTx(this.db, opts?.trx);
 
-    let query = db.selectFrom('shares').select(this.baseFields);
+    let query = db.selectFrom('shares').select(this.baseFields)
+      .select(this.hasPasswordField);
 
     if (opts?.includeSharedPage) {
       query = query.select((eb) => this.withSharedPage(eb));
@@ -83,6 +89,7 @@ export class ShareRepo {
     let query = db
       .selectFrom('shares')
       .select(this.baseFields)
+      .select(this.hasPasswordField)
       .where('pageId', '=', pageId);
 
     if (opts?.includeCreator) {
@@ -109,6 +116,7 @@ export class ShareRepo {
         shareId.toLowerCase(),
       )
       .returning(this.baseFields)
+      .returning(this.hasPasswordField)
       .executeTakeFirst();
   }
 
@@ -121,7 +129,55 @@ export class ShareRepo {
       .insertInto('shares')
       .values(insertableShare)
       .returning(this.baseFields)
+      .returning(this.hasPasswordField)
       .executeTakeFirst();
+  }
+
+  async findPasswordHash(shareId: string): Promise<string | null> {
+    const row = await this.db
+      .selectFrom('shares')
+      .select('passwordHash')
+      .where(
+        isValidUUID(shareId) ? 'id' : sql`LOWER(key)`,
+        '=',
+        shareId.toLowerCase(),
+      )
+      .executeTakeFirst();
+    return row?.passwordHash ?? null;
+  }
+
+  /** Password-protected shares rooted at any of the given pages. */
+  async findProtectedByPageIds(
+    pageIds: string[],
+    workspaceId: string,
+  ): Promise<
+    Array<{
+      id: string;
+      key: string;
+      pageId: string;
+      workspaceId: string;
+      passwordHash: string;
+    }>
+  > {
+    if (pageIds.length === 0) return [];
+    return this.db
+      .selectFrom('shares')
+      .select(['id', 'key', 'pageId', 'workspaceId', 'passwordHash'])
+      .where('pageId', 'in', pageIds)
+      .where('workspaceId', '=', workspaceId)
+      .where('passwordHash', 'is not', null)
+      .execute();
+  }
+
+  async setPasswordHash(
+    shareId: string,
+    passwordHash: string | null,
+  ): Promise<void> {
+    await this.db
+      .updateTable('shares')
+      .set({ passwordHash, updatedAt: new Date() })
+      .where('id', '=', shareId)
+      .execute();
   }
 
   async deleteShare(shareId: string): Promise<void> {
@@ -162,6 +218,7 @@ export class ShareRepo {
     const query = this.db
       .selectFrom('shares')
       .select(this.baseFields)
+      .select(this.hasPasswordField)
       .select((eb) => this.withPage(eb))
       .select((eb) => this.withSpace(eb, userId))
       .select((eb) => this.withCreator(eb))

@@ -42,6 +42,9 @@ describe('SearchController public-space-search gate', () => {
       publicSpaceService as any,
       pageRepo as any,
       {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
     );
     return { controller, searchService, publicSpaceService, pageRepo };
   }

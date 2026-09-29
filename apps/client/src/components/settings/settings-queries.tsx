@@ -8,11 +8,8 @@ import { getGroups } from "@/features/group/services/group-service.ts";
 import { QueryParams } from "@/lib/types.ts";
 import { getWorkspaceMembers } from "@/features/workspace/services/workspace-service.ts";
 import { getLicenseInfo } from "@/ee/licence/services/license-service.ts";
-import { getSsoProviders } from "@/ee/security/services/security-service.ts";
 import { getShares } from "@/features/share/services/share-service.ts";
-import { getApiKeys } from "@/ee/api-key";
-import { getAuditLogs } from "@/ee/audit/services/audit-service";
-import { getVerificationList } from "@/ee/page-verification/services/page-verification-service";
+import { getApiKeys } from "@/features/api-key/services/api-key-service.ts";
 import { getScimTokens } from "@/ee/scim/services/scim-token-service";
 
 export const prefetchWorkspaceMembers = () => {
@@ -56,13 +53,6 @@ export const prefetchLicense = () => {
   });
 };
 
-export const prefetchSsoProviders = () => {
-  queryClient.prefetchQuery({
-    queryKey: ["sso-providers"],
-    queryFn: () => getSsoProviders(),
-  });
-};
-
 export const prefetchShares = () => {
   queryClient.prefetchQuery({
     queryKey: ["share-list", {}],
@@ -81,22 +71,6 @@ export const prefetchApiKeyManagement = () => {
   queryClient.prefetchQuery({
     queryKey: ["api-key-list", { adminView: true }],
     queryFn: () => getApiKeys({ adminView: true }),
-  });
-};
-
-export const prefetchAuditLogs = () => {
-  const params = { limit: 50 };
-  queryClient.prefetchQuery({
-    queryKey: ["audit-logs", params],
-    queryFn: () => getAuditLogs(params),
-  });
-};
-
-export const prefetchVerifiedPages = () => {
-  const params = { limit: 50 };
-  queryClient.prefetchQuery({
-    queryKey: ["verification-list", params],
-    queryFn: () => getVerificationList(params),
   });
 };
 

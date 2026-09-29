@@ -6,6 +6,7 @@ import {
   Indicator,
   Popover,
   Switch,
+  Tabs,
   Text,
   TextInput,
 } from "@mantine/core";
@@ -25,6 +26,8 @@ import CopyTextButton from "@/components/common/copy.tsx";
 import { getAppUrl, isCloud } from "@/lib/config.ts";
 import { buildPageUrl } from "@/features/page/page.utils.ts";
 import classes from "@/features/share/components/share.module.css";
+import PageAccessPanel from "@/features/page-permission/page-access-panel.tsx";
+import SharePasswordSettings from "@/features/share/components/share-password-settings.tsx";
 import useTrial from "@/ee/hooks/use-trial.tsx";
 import { useAtom } from "jotai";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
@@ -33,7 +36,7 @@ import { useSpaceQuery } from "@/features/space/queries/space-query.ts";
 interface ShareModalProps {
   readOnly: boolean;
 }
-export default function ShareModal({ readOnly }: ShareModalProps) {
+export function SharePublishPanel({ readOnly }: ShareModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { pageSlug } = useParams();
@@ -139,27 +142,7 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
   );
 
   return (
-    <Popover width={350} position="bottom" withArrow shadow="md">
-      <Popover.Target>
-        <Button
-          size="compact-sm"
-          leftSection={
-            <Indicator
-              color="green"
-              offset={5}
-              disabled={!isPagePublic}
-              withBorder
-            >
-              <IconWorld size={20} stroke={1.5} />
-            </Indicator>
-          }
-          color="dark"
-          variant="subtle"
-        >
-          {t("Share")}
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown style={{ userSelect: "none" }}>
+    <>
         {isCloud() && isTrial ? (
           <>
             <Group justify="center" mb="sm">
@@ -277,10 +260,57 @@ export default function ShareModal({ readOnly }: ShareModalProps) {
                     disabled={readOnly}
                   />
                 </Group>
+                <SharePasswordSettings
+                  shareId={share.id}
+                  hasPassword={!!share.hasPassword}
+                  readOnly={readOnly}
+                />
               </>
             )}
           </>
         )}
+    </>
+  );
+}
+
+export default function ShareModal({ readOnly }: ShareModalProps) {
+  const { t } = useTranslation();
+  const { pageSlug } = useParams();
+  const { data: page } = usePageQuery({ pageId: extractPageSlugId(pageSlug) });
+  const { data: share } = useShareForPageQuery(page?.id);
+  const [tab, setTab] = useState<string | null>("access");
+
+  return (
+    <Popover width={400} position="bottom" withArrow shadow="md">
+      <Popover.Target>
+        <Button
+          size="compact-sm"
+          leftSection={
+            <Indicator color="green" offset={5} disabled={!share} withBorder>
+              <IconWorld size={20} stroke={1.5} />
+            </Indicator>
+          }
+          color="dark"
+          variant="subtle"
+        >
+          {t("Share")}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown style={{ userSelect: "none" }}>
+        <Tabs value={tab} onChange={setTab}>
+          <Tabs.List mb="sm">
+            <Tabs.Tab value="access">{t("Access")}</Tabs.Tab>
+            <Tabs.Tab value="publish">{t("Publish")}</Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value="access">
+            {page && (
+              <PageAccessPanel pageId={page.id} spaceId={page.spaceId} />
+            )}
+          </Tabs.Panel>
+          <Tabs.Panel value="publish">
+            <SharePublishPanel readOnly={readOnly} />
+          </Tabs.Panel>
+        </Tabs>
       </Popover.Dropdown>
     </Popover>
   );

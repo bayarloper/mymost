@@ -5,7 +5,9 @@ import ShareList from "@/features/share/components/share-list.tsx";
 import PublishedSpacesList from "@/features/public-space/components/published-spaces-list.tsx";
 import { isPublicSpacesAllowed } from "@/features/public-space/utils/public-space-access.ts";
 import { workspaceAtom } from "@/features/user/atoms/current-user-atom.ts";
-import { Alert, Tabs } from "@mantine/core";
+import { Alert, Divider, Tabs } from "@mantine/core";
+import useUserRole from "@/hooks/use-user-role.tsx";
+import { WorkspacePublicSharingToggle } from "@/features/share/components/public-sharing-toggle.tsx";
 import { IconInfoCircle } from "@tabler/icons-react";
 import React from "react";
 import { DocumentTitle } from "@/components/ui/document-title.tsx";
@@ -13,6 +15,7 @@ import { DocumentTitle } from "@/components/ui/document-title.tsx";
 export default function Shares() {
   const { t } = useTranslation();
   const [workspace] = useAtom(workspaceAtom);
+  const { isAdmin } = useUserRole();
 
   const allowPublicSpaces = isPublicSpacesAllowed(workspace);
 
@@ -32,6 +35,13 @@ export default function Shares() {
     <>
       <DocumentTitle title={t("Public sharing")} />
       <SettingsTitle title={t("Public sharing")} />
+
+      {isAdmin && (
+        <>
+          <WorkspacePublicSharingToggle />
+          <Divider my="lg" />
+        </>
+      )}
 
       {allowPublicSpaces ? (
         <Tabs color="dark" defaultValue="pages">
