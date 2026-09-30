@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RequireSessionAuth } from '../../common/decorators/require-session-auth.decorator';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
@@ -25,6 +26,7 @@ import { AuditEvent, AuditResource } from '../../common/events/audit-events';
 import { AuditLogService } from './audit.service';
 import { ListAuditLogsDto, UpdateAuditRetentionDto } from './dto/audit.dto';
 
+@RequireSessionAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('audit')
 export class AuditController {

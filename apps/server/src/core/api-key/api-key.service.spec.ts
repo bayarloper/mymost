@@ -146,3 +146,17 @@ describe('ApiKeyService.createApiKey', () => {
     ).rejects.toThrow('Expiration date must be in the future');
   });
 });
+
+describe('API key endpoints', () => {
+  it('require an interactive session (an API key cannot mint new keys)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ApiKeyController } = require('./api-key.controller');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const {
+      REQUIRE_SESSION_AUTH_KEY,
+    } = require('../../common/decorators/require-session-auth.decorator');
+    expect(
+      Reflect.getMetadata(REQUIRE_SESSION_AUTH_KEY, ApiKeyController),
+    ).toBe(true);
+  });
+});

@@ -24,8 +24,11 @@ import {
   IApprovalRequestedNotificationJob,
   IPageVerifiedNotificationJob,
 } from '../../integrations/queue/constants/queue.interface';
-import { NotificationType } from '../notification/notification.constants';
-import { AuditEvent, AuditResource } from '../../common/events/audit-events';
+import {
+  AuditEvent,
+  AuditEventType,
+  AuditResource,
+} from '../../common/events/audit-events';
 import {
   AUDIT_SERVICE,
   IAuditService,
@@ -231,7 +234,6 @@ export class PageVerificationService {
       .where('id', '=', verification.id)
       .execute();
 
-    await this.resetExpiryNotifications(verification.id);
     await this.queueVerified(
       page,
       user,
@@ -531,18 +533,6 @@ export class PageVerificationService {
     }
   }
 
-  /** Lets the next expiry cycle notify verifiers again after re-verification. */
-  private async resetExpiryNotifications(verificationId: string) {
-    await this.db
-      .deleteFrom('notifications')
-      .where('pageVerificationId', '=', verificationId)
-      .where('type', 'in', [
-        NotificationType.PAGE_VERIFICATION_EXPIRING,
-        NotificationType.PAGE_VERIFICATION_EXPIRED,
-      ])
-      .execute();
-  }
-
   private async queueVerified(page: Page, user: User, verifierIds: string[]) {
     if (verifierIds.length === 0) return;
     const job: IPageVerifiedNotificationJob = {
@@ -564,12 +554,12 @@ export class PageVerificationService {
   }
 
   private audit(
-    event: string,
+    event: AuditEventType,
     page: Page,
     metadata: Record<string, unknown> = {},
   ) {
     this.auditService.log({
-      event: event as any,
+      event,
       resourceType: AuditResource.PAGE,
       resourceId: page.id,
       spaceId: page.spaceId,

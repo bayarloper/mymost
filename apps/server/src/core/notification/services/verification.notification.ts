@@ -18,6 +18,9 @@ import { getPageTitle } from '../../../common/helpers';
 import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
 
+// Covers the scheduler's 7-day "expiring soon" window plus scheduling slack.
+const EXPIRING_NOTIFICATION_WINDOW_MS = 8 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class VerificationNotificationService {
   constructor(
@@ -27,15 +30,19 @@ export class VerificationNotificationService {
     private readonly pagePermissionRepo: PagePermissionRepo,
   ) {}
 
+  // Only notifications from the current expiry cycle count, so re-verifying or
+  // changing the period (which moves expiresAt) notifies verifiers again.
   private async getAlreadyNotifiedUserIds(
     pageVerificationId: string,
     type: string,
+    since: Date,
   ): Promise<Set<string>> {
     const rows = await this.db
       .selectFrom('notifications')
       .select('userId')
       .where('pageVerificationId', '=', pageVerificationId)
       .where('type', '=', type)
+      .where('createdAt', '>=', since)
       .execute();
     return new Set(rows.map((r) => r.userId));
   }
@@ -90,6 +97,15 @@ export class VerificationNotificationService {
     const alreadyNotified = await this.getAlreadyNotifiedUserIds(
       verification.id,
       NotificationType.PAGE_VERIFICATION_EXPIRING,
+      // Cycle start: the later of the last verification and the warning window.
+      new Date(
+        Math.max(
+          expiresAtMs - EXPIRING_NOTIFICATION_WINDOW_MS,
+          verification.verifiedAt
+            ? new Date(verification.verifiedAt).getTime()
+            : 0,
+        ),
+      ),
     );
     const recipients = accessibleVerifierIds.filter(
       (id) => !alreadyNotified.has(id),
@@ -166,6 +182,7 @@ export class VerificationNotificationService {
     const alreadyNotified = await this.getAlreadyNotifiedUserIds(
       verification.id,
       NotificationType.PAGE_VERIFICATION_EXPIRED,
+      new Date(verification.expiresAt),
     );
     const recipients = accessibleVerifierIds.filter(
       (id) => !alreadyNotified.has(id),
@@ -350,6 +367,10 @@ export class VerificationNotificationService {
     if (!page || !space) return null;
 
     const basePageUrl = `${appUrl}/s/${space.slug}/p/${page.slugId}`;
-    return { pageTitle: getPageTitle(page.title), spaceName: space.name ?? space.slug, basePageUrl };
+    return {
+      pageTitle: getPageTitle(page.title),
+      spaceName: space.name ?? space.slug,
+      basePageUrl,
+    };
   }
 }

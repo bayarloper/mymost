@@ -16,6 +16,7 @@ import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RequireSessionAuth } from '../../common/decorators/require-session-auth.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
 import {
@@ -23,6 +24,9 @@ import {
   WorkspaceCaslSubject,
 } from '../casl/interfaces/workspace-ability.type';
 
+// Managing keys requires a real login: an API key must not be able to mint
+// new keys (which would outlive its own revocation).
+@RequireSessionAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('api-keys')
 export class ApiKeyController {

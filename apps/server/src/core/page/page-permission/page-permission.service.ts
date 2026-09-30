@@ -15,7 +15,11 @@ import { SpaceMemberRepo } from '@docmost/db/repos/space/space-member.repo';
 import { PaginationOptions } from '@docmost/db/pagination/pagination-options';
 import { PageAccessService } from '../page-access/page-access.service';
 import { WsService } from '../../../ws/ws.service';
-import { AuditEvent, AuditResource } from '../../../common/events/audit-events';
+import {
+  AuditEvent,
+  AuditEventType,
+  AuditResource,
+} from '../../../common/events/audit-events';
 import {
   AUDIT_SERVICE,
   IAuditService,
@@ -345,12 +349,12 @@ export class PagePermissionService {
   }
 
   private audit(
-    event: string,
+    event: AuditEventType,
     page: Page,
     metadata: Record<string, unknown> = {},
   ) {
     this.auditService.log({
-      event: event as any,
+      event,
       resourceType: AuditResource.PAGE,
       resourceId: page.id,
       spaceId: page.spaceId,

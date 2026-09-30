@@ -31,7 +31,7 @@ export class PageVerificationSchedulerService {
 
       const expiring = await this.db
         .selectFrom('pageVerifications')
-        .select('id')
+        .select(['id', 'expiresAt'])
         .where('type', '=', 'expiring')
         .where('expiresAt', '>', new Date(now))
         .where('expiresAt', '<=', new Date(now + EXPIRING_SOON_MS))
@@ -39,21 +39,31 @@ export class PageVerificationSchedulerService {
 
       const expired = await this.db
         .selectFrom('pageVerifications')
-        .select('id')
+        .select(['id', 'expiresAt'])
         .where('type', '=', 'expiring')
         .where('expiresAt', '<=', new Date(now))
         .where('expiresAt', '>', new Date(now - EXPIRED_LOOKBACK_MS))
         .execute();
 
-      for (const { id } of expiring) {
-        await this.notificationQueue.add(QueueJob.PAGE_VERIFICATION_EXPIRING, {
-          verificationId: id,
-        });
+      // Deterministic job ids: if several instances run this at once, BullMQ
+      // keeps a single job per verification and expiry date.
+      for (const { id, expiresAt } of expiring) {
+        await this.notificationQueue.add(
+          QueueJob.PAGE_VERIFICATION_EXPIRING,
+          { verificationId: id },
+          {
+            jobId: `verification-expiring-${id}-${new Date(expiresAt).getTime()}`,
+          },
+        );
       }
-      for (const { id } of expired) {
-        await this.notificationQueue.add(QueueJob.PAGE_VERIFICATION_EXPIRED, {
-          verificationId: id,
-        });
+      for (const { id, expiresAt } of expired) {
+        await this.notificationQueue.add(
+          QueueJob.PAGE_VERIFICATION_EXPIRED,
+          { verificationId: id },
+          {
+            jobId: `verification-expired-${id}-${new Date(expiresAt).getTime()}`,
+          },
+        );
       }
 
       if (expiring.length + expired.length > 0) {

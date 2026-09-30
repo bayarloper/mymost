@@ -17,6 +17,7 @@ import {
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RequireSessionAuth } from '../../common/decorators/require-session-auth.decorator';
 import { User, Workspace } from '@docmost/db/types/entity.types';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
 import WorkspaceAbilityFactory from '../casl/abilities/workspace-ability.factory';
@@ -57,6 +58,7 @@ export class LdapAuthController {
     setAuthCookie(res, authToken, this.environmentService);
   }
 
+  @RequireSessionAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('config')
@@ -68,6 +70,7 @@ export class LdapAuthController {
     return this.ldapAuthService.getConfig(workspace.id);
   }
 
+  @RequireSessionAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('config/update')
@@ -80,6 +83,7 @@ export class LdapAuthController {
     return this.ldapAuthService.updateConfig(workspace, user, dto);
   }
 
+  @RequireSessionAuth()
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('config/test')

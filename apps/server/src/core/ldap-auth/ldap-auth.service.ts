@@ -24,6 +24,7 @@ import { SessionService } from '../session/session.service';
 import { WorkspaceService } from '../workspace/services/workspace.service';
 import { getWorkspaceDefaultPageEditMode } from '../workspace/workspace.util';
 import { isUserDisabled } from '../../common/helpers';
+import { validateAllowedEmail } from '../auth/auth.util';
 import { AuditEvent, AuditResource } from '../../common/events/audit-events';
 import {
   AUDIT_SERVICE,
@@ -146,6 +147,14 @@ export class LdapAuthService {
     actor: User,
     dto: UpdateLdapConfigDto,
   ) {
+    // With SSO enforced, LDAP is the only way in; disabling it would lock
+    // everyone (including admins) out of the workspace.
+    if (!dto.isEnabled && workspace.enforceSso) {
+      throw new BadRequestException(
+        'Turn off "Enforce SSO" in Security settings before disabling LDAP login',
+      );
+    }
+
     await this.validateGroupMappings(workspace.id, dto);
 
     const existing = await this.authProviderRepo.findByType(
@@ -363,6 +372,15 @@ export class LdapAuthService {
     provider: AuthProvider,
     directoryUser: LdapDirectoryUser,
   ): Promise<User> {
+    // Respect the workspace's allowed email domains, like invitations do.
+    try {
+      validateAllowedEmail(directoryUser.email, workspace);
+    } catch {
+      throw new ForbiddenException(
+        'Your email domain is not allowed in this workspace. Please contact your administrator.',
+      );
+    }
+
     const user = await executeTx(this.db, async (trx) => {
       const user = await this.userRepo.insertUser(
         {

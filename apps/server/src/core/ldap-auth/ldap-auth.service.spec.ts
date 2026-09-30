@@ -145,6 +145,34 @@ function setup(opts: {
   };
 }
 
+describe('LdapAuthService safety checks', () => {
+  it('refuses to disable LDAP while SSO is enforced (would lock everyone out)', async () => {
+    const { service } = setup({ provider: makeProvider() });
+    await expect(
+      service.updateConfig(
+        { ...workspace, enforceSso: true } as any,
+        { id: 'u-1' } as any,
+        { isEnabled: false } as any,
+      ),
+    ).rejects.toThrow('Enforce SSO');
+  });
+
+  it('respects allowed email domains when creating accounts', async () => {
+    const { service, userRepo } = setup({
+      provider: makeProvider(),
+      memberOfGroups: [FINANCE_DN],
+    });
+    await expect(
+      service.login(
+        { ...workspace, emailDomains: ['other.com'] } as any,
+        'jdoe',
+        'pw',
+      ),
+    ).rejects.toThrow('email domain is not allowed');
+    expect(userRepo.insertUser).not.toHaveBeenCalled();
+  });
+});
+
 describe('LdapAuthService stored bind password', () => {
   const configDto = (overrides: Record<string, unknown> = {}) =>
     ({

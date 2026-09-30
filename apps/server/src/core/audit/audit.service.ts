@@ -10,6 +10,15 @@ import { ListAuditLogsDto } from './dto/audit.dto';
 export const DEFAULT_AUDIT_RETENTION_DAYS = 365;
 const CLEANUP_BATCH_SIZE = 5000;
 
+/**
+ * Smallest UUIDv7 for a timestamp. Audit ids are UUIDv7, so `id < floor(t)`
+ * selects rows created before t using the (workspace_id, id) index.
+ */
+export function uuidV7Floor(date: Date): string {
+  const hex = date.getTime().toString(16).padStart(12, '0');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-7000-8000-000000000000`;
+}
+
 @Injectable()
 export class AuditLogService {
   private readonly logger = new Logger(AuditLogService.name);
@@ -58,7 +67,12 @@ export class AuditLogService {
 
     if (dto.event) query = query.where('audit.event', '=', dto.event);
     if (dto.eventPrefix) {
-      query = query.where('audit.event', 'like', `${dto.eventPrefix}.%`);
+      // Exact category match; LIKE would treat '_' in e.g. "api_key" as a wildcard.
+      query = query.where(
+        sql<string>`split_part(audit.event, '.', 1)`,
+        '=',
+        dto.eventPrefix,
+      );
     }
     if (dto.actorId) query = query.where('audit.actorId', '=', dto.actorId);
     if (dto.resourceType) {
@@ -112,7 +126,7 @@ export class AuditLogService {
           const result = await sql<{ count: number }>`
             WITH doomed AS (
               SELECT id FROM audit
-              WHERE workspace_id = ${workspace.id}::uuid AND created_at < ${cutoff}
+              WHERE workspace_id = ${workspace.id}::uuid AND id < ${uuidV7Floor(cutoff)}::uuid
               LIMIT ${CLEANUP_BATCH_SIZE}
             )
             DELETE FROM audit WHERE id IN (SELECT id FROM doomed)
